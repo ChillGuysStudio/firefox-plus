@@ -1,0 +1,6 @@
+[DEFAULT]
+firefox-appdir = "browser"
+
+["test_nativeChat_provider.js"]
+
+["test_nativeChat_store.js"]

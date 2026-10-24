@@ -45,6 +45,7 @@ DIRS += [
     "migration",
     "mozcachedohttp",
     "multilineeditor",
+    "nativechat",
     "newtab",
     "nimbus",
     "originattributes",

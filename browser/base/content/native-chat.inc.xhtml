@@ -1,0 +1,49 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+<html:div id="native-chat-overlay" popover="manual">
+  <html:button id="native-chat-launcher" aria-controls="native-chat-panel"
+               aria-expanded="false" data-l10n-id="native-chat-launcher">
+    <html:img src="chrome://browser/content/native-chat.svg" alt=""/>
+  </html:button>
+  <html:section id="native-chat-panel" hidden="hidden" aria-labelledby="native-chat-title">
+    <html:header id="native-chat-header">
+      <html:strong id="native-chat-title" data-l10n-id="native-chat-title"/>
+      <html:button id="native-chat-new" data-l10n-id="native-chat-new"/>
+      <html:button id="native-chat-settings-toggle" data-l10n-id="native-chat-settings-toggle"
+                   aria-expanded="false" aria-controls="native-chat-settings"/>
+      <html:button id="native-chat-close" data-l10n-id="native-chat-close"/>
+    </html:header>
+    <html:p id="native-chat-private" hidden="hidden" data-l10n-id="native-chat-private"/>
+    <html:form id="native-chat-settings" hidden="hidden">
+      <html:label for="native-chat-provider" data-l10n-id="native-chat-provider"/>
+      <html:select id="native-chat-provider">
+        <html:option value="openai">OpenAI</html:option>
+        <html:option value="gemini">Google AI Studio</html:option>
+        <html:option value="vertex">Vertex AI</html:option>
+        <html:option value="anthropic">Anthropic</html:option>
+        <html:option value="openrouter">OpenRouter</html:option>
+        <html:option value="grok">Grok</html:option>
+        <html:option value="custom" data-l10n-id="native-chat-custom"/>
+      </html:select>
+      <html:label for="native-chat-endpoint" data-l10n-id="native-chat-endpoint"/>
+      <html:input id="native-chat-endpoint" type="url" required="required"/>
+      <html:label for="native-chat-model" data-l10n-id="native-chat-model"/>
+      <html:input id="native-chat-model" type="text" required="required"/>
+      <html:label for="native-chat-key" data-l10n-id="native-chat-key"/>
+      <html:input id="native-chat-key" type="password" autocomplete="off"/>
+      <html:p data-l10n-id="native-chat-settings-info"/>
+      <html:button id="native-chat-settings-save" type="submit" data-l10n-id="native-chat-settings-save"/>
+    </html:form>
+    <html:div id="native-chat-messages" role="log" aria-live="polite"
+              aria-relevant="additions text" data-l10n-id="native-chat-messages"/>
+    <html:p id="native-chat-empty" data-l10n-id="native-chat-empty"/>
+    <html:p id="native-chat-status" role="status" hidden="hidden"/>
+    <html:form id="native-chat-composer">
+      <html:textarea id="native-chat-input" rows="2" data-l10n-id="native-chat-input"/>
+      <html:button id="native-chat-send" type="submit" data-l10n-id="native-chat-send"/>
+      <html:button id="native-chat-stop" type="button" hidden="hidden" data-l10n-id="native-chat-stop"/>
+    </html:form>
+  </html:section>
+</html:div>

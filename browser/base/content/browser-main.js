@@ -44,6 +44,17 @@ window.onunload = gBrowserInit.onUnload.bind(gBrowserInit);
 window.onclose = WindowIsClosing;
 
 window.addEventListener(
+  "load",
+  () => {
+    const { NativeChat } = ChromeUtils.importESModule(
+      "moz-src:///browser/components/nativechat/NativeChat.sys.mjs"
+    );
+    window.gNativeChat = new NativeChat(window);
+  },
+  { once: true }
+);
+
+window.addEventListener(
   "MozBeforeInitialXULLayout",
   gBrowserInit.onBeforeInitialXULLayout.bind(gBrowserInit),
   { once: true }

@@ -48,6 +48,8 @@ browser.jar:
         content/browser/browser-gestureSupport.js           (content/browser-gestureSupport.js)
         content/browser/browser-init.js                     (content/browser-init.js)
         content/browser/browser-main.js                     (content/browser-main.js)
+        content/browser/native-chat.css                     (content/native-chat.css)
+        content/browser/native-chat.svg                     (content/native-chat.svg)
         content/browser/browser-menubar.js                  (content/browser-menubar.js)
         content/browser/browser-pageActions.js              (content/browser-pageActions.js)
         content/browser/browser-pagestyle.js                (content/browser-pagestyle.js)
