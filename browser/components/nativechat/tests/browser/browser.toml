@@ -1,0 +1,4 @@
+[DEFAULT]
+support-files = ["file_restricted.html"]
+
+["browser_nativeChat.js"]

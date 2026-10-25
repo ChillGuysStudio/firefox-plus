@@ -1,0 +1,375 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#native-chat-overlay {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text-color);
+  pointer-events: none;
+  font: message-box;
+  font-size: var(--font-size-large);
+  color-scheme: light dark;
+
+  &::backdrop {
+    pointer-events: none;
+    background: transparent;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+    opacity: var(--opacity-deemphasized-strong);
+  }
+
+  :focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  img {
+    -moz-context-properties: fill;
+    fill: currentColor;
+    pointer-events: none;
+  }
+}
+
+#native-chat-launcher {
+  position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: var(--size-item-medium);
+  height: var(--size-item-medium);
+  margin: 0;
+  padding: var(--space-xsmall);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small);
+  background: var(--background-color-box);
+  color: var(--text-color);
+  /* stylelint-disable-next-line stylelint-plugin-mozilla/use-design-tokens -- Set by the user's opacity slider. */
+  opacity: var(--opacity-native-chat-button, 0.6);
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  img {
+    width: var(--icon-size-small);
+    height: var(--icon-size-small);
+  }
+}
+
+#native-chat-panel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: var(--size-layout-large);
+  height: var(--size-layout-xlarge);
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  resize: both;
+  overflow: hidden;
+  border-radius: var(--border-radius-large);
+  background: var(--background-color-box);
+  box-shadow: var(--box-shadow-level-4);
+  /* stylelint-disable-next-line stylelint-plugin-mozilla/use-design-tokens -- Set by the user's opacity slider. */
+  opacity: var(--opacity-native-chat-panel, 0.95);
+  pointer-events: auto;
+  line-height: 1.5;
+}
+
+#native-chat-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xsmall);
+  padding: var(--space-medium);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+#native-chat-heading {
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    display: block;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  span {
+    display: block;
+    color: var(--text-color-deemphasized);
+    font-size: var(--font-size-small);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
+
+#native-chat-overlay .native-chat-icon-button {
+  display: grid;
+  place-items: center;
+  width: var(--size-item-large);
+  height: var(--size-item-large);
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: var(--border-radius-medium);
+  background: transparent;
+  color: inherit;
+
+  &:hover:enabled,
+  &[aria-expanded="true"] {
+    background: var(--button-background-color-hover);
+  }
+
+  img {
+    width: var(--icon-size-small);
+    height: var(--icon-size-small);
+  }
+}
+
+#native-chat-settings {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-medium) var(--space-large);
+  scrollbar-width: thin;
+
+  h2 {
+    font: inherit;
+    font-weight: var(--font-weight-semibold);
+    margin-block: var(--space-large) var(--space-medium);
+
+    &:first-child {
+      margin-block-start: 0;
+    }
+  }
+
+  label,
+  input,
+  select {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  label {
+    margin-block: var(--space-medium) var(--space-xsmall);
+  }
+
+  input,
+  select {
+    margin: 0;
+    border-radius: var(--border-radius-medium);
+  }
+
+  input:not([type="range"]),
+  select {
+    padding: var(--space-small);
+    min-height: var(--size-item-large);
+  }
+
+  input[type="range"] {
+    accent-color: var(--text-color);
+    cursor: pointer;
+    padding-block: var(--space-small);
+  }
+
+  p {
+    margin-block: var(--space-small) var(--space-medium);
+    color: var(--text-color-deemphasized);
+    font-size: var(--font-size-small);
+  }
+
+  button {
+    margin-inline-start: 0;
+    border-radius: var(--border-radius-medium);
+  }
+}
+
+.native-chat-slider-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-medium);
+
+  output {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-color-deemphasized);
+  }
+}
+
+#native-chat-conversation {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+#native-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-large);
+  scrollbar-width: thin;
+  user-select: text;
+
+  article {
+    margin-block-end: var(--space-large);
+  }
+
+  article[data-role="user"] {
+    margin-inline-start: var(--space-large);
+    padding: var(--space-medium);
+    border-radius: var(--border-radius-medium);
+    background: var(--background-color-canvas);
+  }
+
+  strong {
+    display: block;
+    margin-block-end: var(--space-small);
+    font-size: var(--font-size-small);
+    color: var(--text-color-deemphasized);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &:empty {
+    display: none;
+  }
+}
+
+#native-chat-empty {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-large);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  img {
+    width: var(--icon-size-large);
+    height: var(--icon-size-large);
+    margin-block-end: var(--space-medium);
+    color: var(--text-color-deemphasized);
+  }
+
+  h2 {
+    margin-block: 0 var(--space-small);
+    font: inherit;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  p {
+    margin-block: 0 var(--space-medium);
+    color: var(--text-color-deemphasized);
+  }
+
+  button {
+    border-radius: var(--border-radius-medium);
+  }
+}
+
+#native-chat-private,
+#native-chat-status {
+  margin: 0;
+  padding: var(--space-small) var(--space-medium);
+  font-size: var(--font-size-small);
+  overflow-wrap: anywhere;
+  flex-shrink: 0;
+}
+
+#native-chat-status[data-error] {
+  color: var(--text-color-error);
+}
+
+#native-chat-composer {
+  margin: 0 var(--space-medium) var(--space-medium);
+  padding: var(--space-small);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-large);
+  background: var(--background-color-canvas);
+  flex-shrink: 0;
+
+  &:focus-within {
+    border-color: var(--focus-outline-color);
+  }
+
+  textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-height: var(--size-layout-small);
+    resize: vertical;
+    margin: 0;
+    padding: var(--space-small);
+    border: 0;
+    border-radius: 0;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    line-height: inherit;
+    user-select: text;
+
+    &:focus-visible {
+      outline: none;
+    }
+  }
+}
+
+#native-chat-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-small);
+
+  span {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-color-deemphasized);
+    font-size: var(--font-size-small);
+  }
+
+  #native-chat-send,
+  #native-chat-stop {
+    background: var(--button-background-color-primary);
+    color: var(--button-text-color-primary);
+  }
+}

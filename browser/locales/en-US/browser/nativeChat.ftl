@@ -1,0 +1,77 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+native-chat-title = Chat
+native-chat-launcher =
+    .title = Chat (Alt+C). Drag to move.
+    .aria-label = Open chat
+native-chat-new =
+    .title = New conversation
+    .aria-label = New conversation
+native-chat-settings-toggle =
+    .title = Settings
+    .aria-label = Settings
+native-chat-close =
+    .title = Close chat (Escape)
+    .aria-label = Close chat
+native-chat-private = This conversation stays in this private window and is cleared when it closes.
+native-chat-provider = Provider
+native-chat-custom = OpenAI-compatible server
+native-chat-opencode = OpenCode
+native-chat-opencode-v2 = OpenCode v2
+native-chat-endpoint = API base URL
+native-chat-opencode-endpoint = OpenCode server URL
+native-chat-opencode-v2-endpoint = OpenCode server URL or pair link
+native-chat-model = Model
+native-chat-key = API key
+native-chat-opencode-key = Server password (optional)
+native-chat-opencode-v2-key = Server password or pairing token (optional)
+native-chat-server-default-model = Server default
+native-chat-settings-info = Keys are saved in the { -brand-short-name } password manager. Messages go directly to this provider when you send them. Page content is never included automatically.
+native-chat-messages =
+    .aria-label = Conversation
+native-chat-empty-title = Ask a question
+native-chat-empty = Send a message or capture the question on your screen. Choose your provider in Settings to get started.
+native-chat-setup = Open settings
+native-chat-input =
+    .placeholder = Ask anything…
+    .aria-label = Message
+native-chat-send =
+    .title = Send message
+    .aria-label = Send message
+native-chat-stop =
+    .title = Stop response
+    .aria-label = Stop response
+native-chat-you = You
+native-chat-assistant = Assistant
+native-chat-working = Waiting for a reply…
+native-chat-settings-saved = Settings saved.
+native-chat-invalid-endpoint = Enter an HTTPS API base URL, or HTTP for a localhost server, without credentials, a query, or a fragment.
+native-chat-missing-model = Choose a provider and enter its model ID in Settings.
+native-chat-missing-key = Add your provider’s API key in Settings.
+native-chat-empty-response = The provider returned no text. Check the model ID or try again.
+# $status (number) is the HTTP response status code.
+native-chat-request-error = The provider returned HTTP { $status }. Check your settings and try again.
+native-chat-network-error = Could not reach the provider. Check the API base URL and your connection, then try again.
+native-chat-timeout = The provider did not reply within two minutes. Try again or choose another model.
+native-chat-storage-error = Could not save chat data. Check that your profile and password manager are available.
+native-chat-opencode-auth-error = OpenCode authentication failed. Check the server password in Settings.
+native-chat-opencode-v2-auth-error = OpenCode v2 authentication failed. Check your password or paste a fresh pair link.
+native-chat-opencode-v2-pair-error = OpenCode v2 pairing link is invalid or expired. Run opencode pair again and paste the new link.
+
+native-chat-appearance = Appearance
+native-chat-connection = AI provider
+native-chat-chat-opacity = Chat opacity
+native-chat-button-opacity = Button opacity
+native-chat-reset-position = Reset button position
+native-chat-reset-hint = Lost the button? Alt+Shift+R restores it to the bottom-right corner and makes it visible.
+native-chat-position-reset = Button restored to the bottom-right corner.
+native-chat-not-configured = Choose a provider to begin
+native-chat-composer-hint = Enter to send · Shift+Enter for a new line
+native-chat-screenshot =
+    .title = Screenshot and answer (Alt+Q)
+    .aria-label = Take a screenshot and answer the visible question
+native-chat-capturing = Capturing the visible page…
+native-chat-screenshot-sent = Screenshot · answer the visible question
+native-chat-screenshot-error = Could not capture this page. Wait for it to finish loading, then try again.

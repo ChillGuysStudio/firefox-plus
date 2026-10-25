@@ -14,6 +14,10 @@
 
   <!-- The event listeners are defined by _initCommandSet in browser-init.js -->
   <commandset id="mainCommandSet">
+    <command id="cmd_nativeChatToggle" />
+    <command id="cmd_nativeChatHide" />
+    <command id="cmd_nativeChatScreenshot" />
+    <command id="cmd_nativeChatResetPosition" />
     <command id="cmd_newNavigator" />
     <command id="cmd_handleBackspace" />
     <command id="cmd_handleShiftBackspace" />
@@ -138,6 +142,16 @@
   </commandset>
 
   <keyset id="mainKeyset">
+    <key id="key_nativeChatToggle" key="c" modifiers="alt"
+         command="cmd_nativeChatToggle" reserved="true"/>
+    <key id="key_nativeChatToggleAlt" key="c" modifiers="accel,alt"
+         command="cmd_nativeChatToggle" reserved="true"/>
+    <key id="key_nativeChatHide" key="c" modifiers="alt,shift"
+         command="cmd_nativeChatHide" reserved="true"/>
+    <key id="key_nativeChatScreenshot" key="q" modifiers="alt"
+         command="cmd_nativeChatScreenshot" reserved="true"/>
+    <key id="key_nativeChatResetPosition" key="r" modifiers="alt,shift"
+         command="cmd_nativeChatResetPosition" reserved="true"/>
     <key id="key_newNavigator"
          data-l10n-id="window-new-shortcut"
          command="cmd_newNavigator"
