@@ -4,7 +4,10 @@
 
 import { JSONFile } from "resource://gre/modules/JSONFile.sys.mjs";
 import {
+  isOpenCodeProvider,
   normalizeEndpoint,
+  pairOpenCodeV2,
+  parseOpenCodePairLink,
   PROVIDERS,
 } from "moz-src:///browser/components/nativechat/NativeChatProvider.sys.mjs";
 
@@ -60,24 +63,45 @@ export const NativeChatStore = {
   },
 
   async saveSettings(settings, apiKey) {
-    const endpoint = normalizeEndpoint(settings.endpoint);
+    let effectiveEndpoint = settings.endpoint;
+    let effectiveKey = apiKey;
+
+    if (settings.provider === "opencode-v2") {
+      const endpointPair = parseOpenCodePairLink(effectiveEndpoint);
+      const keyPair = parseOpenCodePairLink(effectiveKey);
+      let pairCandidate = null;
+      if (endpointPair) {
+        pairCandidate = effectiveEndpoint;
+      } else if (keyPair) {
+        pairCandidate = effectiveKey;
+      }
+      if (pairCandidate) {
+        const paired = await pairOpenCodeV2(pairCandidate);
+        effectiveEndpoint = paired.baseUrl;
+        effectiveKey = paired.password;
+      }
+    }
+
+    const endpoint = normalizeEndpoint(effectiveEndpoint);
+    const isOpenCode = isOpenCodeProvider(settings.provider);
     if (
       !Object.hasOwn(PROVIDERS, settings.provider) ||
-      !settings.model.trim()
+      (!settings.model.trim() && !isOpenCode)
     ) {
       throw new Error("native-chat-missing-model");
     }
+
     const logins = await Services.logins.searchLoginsAsync({
       origin: ORIGIN,
       httpRealm: endpoint,
     });
-    if (apiKey) {
+    if (effectiveKey) {
       const login = new LoginInfo(
         ORIGIN,
         null,
         endpoint,
         "api-key",
-        apiKey,
+        effectiveKey,
         "",
         ""
       );
@@ -91,9 +115,11 @@ export const NativeChatStore = {
         await Services.logins.removeLoginAsync(login);
       }
     }
+
     Services.prefs.setStringPref(`${PREF}provider`, settings.provider);
     Services.prefs.setStringPref(`${PREF}endpoint`, endpoint);
     Services.prefs.setStringPref(`${PREF}model`, settings.model.trim());
+    return { endpoint, key: effectiveKey };
   },
 
   async getKey(endpoint) {

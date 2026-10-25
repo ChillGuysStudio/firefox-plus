@@ -95,3 +95,50 @@ add_task(function test_appearance_defaults_and_persistence() {
   });
   Services.prefs.deleteBranch("browser.nativeChat.");
 });
+
+add_task(async function test_opencode_settings_and_pair_link() {
+  await Services.logins.initializationPromise;
+  const opencodeSettings = {
+    provider: "opencode",
+    endpoint: "http://127.0.0.1:4096",
+    model: "",
+  };
+  await NativeChatStore.saveSettings(opencodeSettings, "");
+  Assert.equal(NativeChatStore.getSettings().provider, "opencode");
+  Assert.equal(NativeChatStore.getSettings().model, "");
+
+  const { HttpServer } = ChromeUtils.importESModule(
+    "resource://testing-common/httpd.sys.mjs"
+  );
+  const server = new HttpServer();
+  server.registerPathHandler(
+    "/auth/connect/code-store-test",
+    (request, response) => {
+      response.setStatusLine(request.httpVersion, 200, "OK");
+      response.setHeader("Content-Type", "application/json");
+      response.write(JSON.stringify({ token: "store-token-secret" }));
+    }
+  );
+  server.start(-1);
+  registerCleanupFunction(() => new Promise(resolve => server.stop(resolve)));
+
+  const pairUrl = `http://localhost:${server.identity.primaryPort}/auth/connect/code-store-test`;
+  const opencodeV2Settings = {
+    provider: "opencode-v2",
+    endpoint: pairUrl,
+    model: "",
+  };
+  const saved = await NativeChatStore.saveSettings(opencodeV2Settings, "");
+  Assert.equal(
+    saved.endpoint,
+    `http://localhost:${server.identity.primaryPort}`
+  );
+  Assert.equal(saved.key, "store-token-secret");
+  Assert.equal(
+    await NativeChatStore.getKey(
+      `http://localhost:${server.identity.primaryPort}`
+    ),
+    "store-token-secret"
+  );
+  Services.prefs.deleteBranch("browser.nativeChat.");
+});

@@ -49,15 +49,16 @@
         <html:option value="openrouter">OpenRouter</html:option>
         <html:option value="grok">Grok</html:option>
         <html:option value="custom" data-l10n-id="native-chat-custom"/>
+        <html:option value="opencode" data-l10n-id="native-chat-opencode"/>
+        <html:option value="opencode-v2" data-l10n-id="native-chat-opencode-v2"/>
       </html:select>
-      <html:label for="native-chat-endpoint" data-l10n-id="native-chat-endpoint"/>
+      <html:label id="native-chat-endpoint-label" for="native-chat-endpoint" data-l10n-id="native-chat-endpoint"/>
       <html:input id="native-chat-endpoint" type="url" required="required" spellcheck="false"/>
-      <html:label for="native-chat-model" data-l10n-id="native-chat-model"/>
-      <html:input id="native-chat-model" type="text" required="required" spellcheck="false"/>
-      <html:label for="native-chat-key" data-l10n-id="native-chat-key"/>
+      <html:label id="native-chat-model-label-field" for="native-chat-model" data-l10n-id="native-chat-model"/>
+      <html:select id="native-chat-model"/>
+      <html:label id="native-chat-key-label" for="native-chat-key" data-l10n-id="native-chat-key"/>
       <html:input id="native-chat-key" type="password" autocomplete="off"/>
       <html:p data-l10n-id="native-chat-settings-info"/>
-      <html:button id="native-chat-settings-save" type="submit" data-l10n-id="native-chat-settings-save"/>
     </html:form>
     <html:div id="native-chat-conversation">
       <html:div id="native-chat-messages" role="log" aria-live="polite"

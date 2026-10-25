@@ -5,9 +5,16 @@
 import { PrivateBrowsingUtils } from "resource://gre/modules/PrivateBrowsingUtils.sys.mjs";
 import {
   PROVIDERS,
+  PROVIDER_DEFAULT_MODELS,
   buildRequest,
-  normalizeEndpoint,
+  getOpenAICompatibleModels,
+  getOpenCodeModels,
+  getOpenCodeV2Models,
+  isOpenCodeProvider,
+  pairOpenCodeV2,
+  parseOpenCodePairLink,
   requestReply,
+  resetOpenCodeSessions,
 } from "moz-src:///browser/components/nativechat/NativeChatProvider.sys.mjs";
 import {
   APPEARANCE_PREF,
@@ -80,6 +87,43 @@ export class NativeChat {
         });
       });
     }
+    const modelSelect = this.element("model");
+    if (modelSelect) {
+      const originalValueDesc = Object.getOwnPropertyDescriptor(
+        this.window.HTMLSelectElement.prototype,
+        "value"
+      );
+      Object.defineProperty(modelSelect, "value", {
+        get() {
+          return originalValueDesc.get.call(this);
+        },
+        set(val) {
+          if (
+            typeof val === "string" &&
+            val &&
+            !Array.from(this.options).some(opt => opt.value === val)
+          ) {
+            const opt = this.ownerDocument.createElementNS(
+              "http://www.w3.org/1999/xhtml",
+              "option"
+            );
+            opt.value = val;
+            opt.textContent = val;
+            this.append(opt);
+          }
+          originalValueDesc.set.call(this, val);
+        },
+        configurable: true,
+      });
+    }
+    listen(this.element("model"), "change", () => {
+      this.updateProviderFields();
+      this.autoSaveSettings();
+    });
+    listen(this.element("model"), "input", () => {
+      this.updateProviderFields();
+      this.autoSaveSettings();
+    });
     listen(this.element("composer"), "submit", event => {
       event.preventDefault();
       this.send();
@@ -106,15 +150,36 @@ export class NativeChat {
     );
     listen(this.element("settings"), "submit", event => {
       event.preventDefault();
-      this.saveSettings();
+      this.autoSaveSettings();
     });
-    listen(this.element("provider"), "change", () => {
+    listen(this.element("provider"), "change", async () => {
       this.element("endpoint").value =
         PROVIDERS[this.element("provider").value];
       this.element("model").value = "";
-      this.loadKey();
+      this.updateProviderFields();
+      await this.loadKey();
+      await this.loadModels();
+      await this.autoSaveSettings();
     });
-    listen(this.element("endpoint"), "change", () => this.loadKey());
+    listen(this.element("endpoint"), "change", async () => {
+      const paired = await this.maybePairFromInput();
+      if (!paired) {
+        await this.loadKey();
+      }
+      await this.loadModels();
+      await this.autoSaveSettings();
+    });
+    listen(this.element("endpoint"), "input", async () => {
+      await this.autoSaveSettings();
+    });
+    listen(this.element("key"), "change", async () => {
+      await this.maybePairFromInput();
+      await this.loadModels();
+      await this.autoSaveSettings();
+    });
+    listen(this.element("key"), "input", async () => {
+      await this.autoSaveSettings();
+    });
     listen(
       this.document.getElementById("cmd_nativeChatToggle"),
       "command",
@@ -201,7 +266,10 @@ export class NativeChat {
       ) {
         this.applyAppearance();
       }
-      if (data === "browser.nativeChat.model") {
+      if (
+        data === "browser.nativeChat.model" ||
+        data === "browser.nativeChat.provider"
+      ) {
         this.updateProviderLabel();
       }
       return;
@@ -302,16 +370,179 @@ export class NativeChat {
     }
   }
 
+  updateProviderFields() {
+    const provider = this.element("provider")?.value;
+    const model = this.element("model");
+    const isOpenCode = isOpenCodeProvider(provider);
+    if (model) {
+      model.required = !isOpenCode;
+    }
+    const endpointLabel = this.element("endpoint-label");
+    const keyLabel = this.element("key-label");
+    if (endpointLabel) {
+      let l10nId = "native-chat-endpoint";
+      if (provider === "opencode") {
+        l10nId = "native-chat-opencode-endpoint";
+      } else if (provider === "opencode-v2") {
+        l10nId = "native-chat-opencode-v2-endpoint";
+      }
+      this.document.l10n.setAttributes(endpointLabel, l10nId);
+    }
+    if (keyLabel) {
+      let l10nId = "native-chat-key";
+      if (provider === "opencode") {
+        l10nId = "native-chat-opencode-key";
+      } else if (provider === "opencode-v2") {
+        l10nId = "native-chat-opencode-v2-key";
+      }
+      this.document.l10n.setAttributes(keyLabel, l10nId);
+    }
+  }
+
+  createOption(value, label) {
+    const option = this.document.createElementNS(
+      "http://www.w3.org/1999/xhtml",
+      "option"
+    );
+    option.value = value;
+    option.textContent = label;
+    return option;
+  }
+
+  async loadModels(savedModel = null) {
+    const provider = this.element("provider")?.value;
+    const endpoint = this.element("endpoint")?.value;
+    const modelSelect = this.element("model");
+    if (!modelSelect) {
+      return;
+    }
+
+    const currentSelected =
+      savedModel !== null ? savedModel : modelSelect.value;
+
+    let models = (PROVIDER_DEFAULT_MODELS[provider] || []).map(m => ({
+      ...m,
+    }));
+
+    if (isOpenCodeProvider(provider)) {
+      if (modelSelect.options.length === 0) {
+        modelSelect.replaceChildren(
+          this.createOption("", "Server default model")
+        );
+      }
+      if (endpoint) {
+        try {
+          const key = await NativeChatStore.getKey(endpoint);
+          const data =
+            provider === "opencode"
+              ? await getOpenCodeModels(endpoint, key)
+              : await getOpenCodeV2Models(endpoint, key);
+          if (
+            !this.destroyed &&
+            this.element("provider")?.value === provider &&
+            this.element("endpoint")?.value === endpoint &&
+            Array.isArray(data?.models) &&
+            data.models.length
+          ) {
+            models = [
+              { value: "", label: "Server default model" },
+              ...data.models,
+            ];
+          }
+        } catch {}
+      }
+    } else if (["custom", "openai"].includes(provider) && endpoint) {
+      try {
+        const key = await NativeChatStore.getKey(endpoint);
+        const fetched = await getOpenAICompatibleModels(endpoint, key);
+        if (
+          !this.destroyed &&
+          this.element("provider")?.value === provider &&
+          fetched.length
+        ) {
+          models = fetched;
+        }
+      } catch {}
+    }
+
+    if (this.destroyed || this.element("provider")?.value !== provider) {
+      return;
+    }
+
+    const fragment = this.document.createDocumentFragment();
+    let hasSelected = false;
+    for (const item of models) {
+      const opt = this.createOption(item.value, item.label);
+      if (item.value === currentSelected) {
+        opt.selected = true;
+        hasSelected = true;
+      }
+      fragment.append(opt);
+    }
+
+    if (currentSelected && !models.some(m => m.value === currentSelected)) {
+      const customOpt = this.createOption(currentSelected, currentSelected);
+      customOpt.selected = true;
+      hasSelected = true;
+      fragment.append(customOpt);
+    }
+
+    modelSelect.replaceChildren(fragment);
+    if (hasSelected && currentSelected !== null) {
+      modelSelect.value = currentSelected;
+    } else if (models.length && currentSelected === null) {
+      modelSelect.value = models[0].value;
+    }
+    this.updateProviderFields();
+  }
+
+  async maybePairFromInput() {
+    const provider = this.element("provider")?.value;
+    if (provider !== "opencode-v2") {
+      return false;
+    }
+    const endpointInput = this.element("endpoint");
+    const keyInput = this.element("key");
+    const endpointPair = parseOpenCodePairLink(endpointInput?.value);
+    const keyPair = parseOpenCodePairLink(keyInput?.value);
+    let pairCandidate = null;
+    if (endpointPair) {
+      pairCandidate = endpointInput.value;
+    } else if (keyPair) {
+      pairCandidate = keyInput.value;
+    }
+    if (pairCandidate) {
+      try {
+        const paired = await pairOpenCodeV2(pairCandidate);
+        if (paired && !this.destroyed) {
+          endpointInput.value = paired.baseUrl;
+          keyInput.value = paired.password;
+          return true;
+        }
+      } catch (error) {
+        this.showError(error);
+      }
+    }
+    return false;
+  }
+
   updateProviderLabel() {
-    const model = NativeChatStore.getSettings().model;
+    const settings = NativeChatStore.getSettings();
+    const model = settings.model;
     const label = this.element("model-label");
     if (model) {
       label.removeAttribute("data-l10n-id");
       label.textContent = model;
+    } else if (isOpenCodeProvider(settings.provider)) {
+      this.document.l10n.setAttributes(
+        label,
+        "native-chat-server-default-model"
+      );
     } else {
       this.document.l10n.setAttributes(label, "native-chat-not-configured");
     }
-    this.element("setup").hidden = !!model;
+    this.element("setup").hidden =
+      !!model || isOpenCodeProvider(settings.provider);
   }
 
   async resetPosition() {
@@ -339,6 +570,9 @@ export class NativeChat {
   }
 
   close() {
+    if (!this.element("settings").hidden) {
+      this.autoSaveSettings();
+    }
     this.element("panel").hidden = true;
     this.element("launcher").setAttribute("aria-expanded", "false");
     if (this.previousFocus?.isConnected) {
@@ -431,12 +665,15 @@ export class NativeChat {
     );
     if (!form.hidden) {
       const settings = NativeChatStore.getSettings();
-      for (const name of ["provider", "endpoint", "model"]) {
+      for (const name of ["provider", "endpoint"]) {
         this.element(name).value = settings[name];
       }
+      this.updateProviderFields();
       await this.loadKey();
+      await this.loadModels(settings.model);
       this.element("provider").focus();
     } else {
+      await this.autoSaveSettings();
       this.element("key").value = "";
       this.element("input").focus();
     }
@@ -459,30 +696,36 @@ export class NativeChat {
     }
   }
 
-  async saveSettings() {
+  async autoSaveSettings() {
+    if (this.destroyed) {
+      return;
+    }
+    await this.maybePairFromInput();
     const settings = Object.fromEntries(
       ["provider", "endpoint", "model"].map(name => [
         name,
-        this.element(name).value,
+        this.element(name)?.value || "",
       ])
     );
-    this.element("settings-save").disabled = true;
+    const key = this.element("key")?.value?.trim() || "";
     try {
-      settings.endpoint = normalizeEndpoint(settings.endpoint);
-      await NativeChatStore.saveSettings(
-        settings,
-        this.element("key").value.trim()
-      );
+      const saved = await NativeChatStore.saveSettings(settings, key);
       if (!this.destroyed) {
-        await this.toggleSettings();
+        if (saved?.endpoint && this.element("endpoint")) {
+          this.element("endpoint").value = saved.endpoint;
+        }
+        if (saved?.key && this.element("key")) {
+          this.element("key").value = saved.key;
+        }
         this.updateProviderLabel();
-        this.status("native-chat-settings-saved");
       }
-    } catch (error) {
-      this.showError(error, "native-chat-storage-error");
-    } finally {
-      this.element("settings-save").disabled = false;
+    } catch {
+      // Ignore validation errors while editing incomplete settings.
     }
+  }
+
+  async saveSettings() {
+    return this.autoSaveSettings();
   }
 
   status(id, error = false, args = null) {
@@ -503,6 +746,9 @@ export class NativeChat {
       "native-chat-request-error",
       "native-chat-timeout",
       "native-chat-screenshot-error",
+      "native-chat-opencode-auth-error",
+      "native-chat-opencode-v2-auth-error",
+      "native-chat-opencode-v2-pair-error",
     ];
     this.status(
       known.includes(error.message) ? error.message : fallback,
@@ -604,7 +850,7 @@ export class NativeChat {
         { role: "user", content: screenshot ? SCREENSHOT_PROMPT : text },
       ].slice(-MAX_MESSAGES);
       // Validate before committing the message, so setup errors preserve the draft.
-      buildRequest(settings, key, messages);
+      buildRequest(settings, key, messages, null);
       let image = null;
       if (screenshot) {
         this.status("native-chat-capturing");
@@ -644,7 +890,8 @@ export class NativeChat {
           key,
           messages,
           controller.signal,
-          image
+          image,
+          { isPrivate: this.isPrivate }
         );
       } finally {
         this.window.clearTimeout(timeout);
@@ -680,6 +927,7 @@ export class NativeChat {
     this.stop();
     this.element("input").value = "";
     this.messages = [];
+    resetOpenCodeSessions({ isPrivate: this.isPrivate });
     this.saveHistory();
     this.element("input").focus();
   }

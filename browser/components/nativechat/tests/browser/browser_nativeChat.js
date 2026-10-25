@@ -525,8 +525,13 @@ add_task(
             "image_url",
             "The provider receives an image request"
           );
+          is(
+            received[0].messages[0].role,
+            "system",
+            "The screenshot request includes a system message"
+          );
           ok(
-            parts[0].text.includes("Answer the question visible"),
+            parts[0].text.includes("question visible in this screenshot"),
             "The screenshot uses the short-answer prompt"
           );
           const imageURL = parts[1].image_url.url;
@@ -596,13 +601,18 @@ add_task(async function test_provider_settings_and_setup_error() {
     chat.element("endpoint").value = "http://localhost:1234/v1";
     chat.element("model").value = "local-vision-model";
     chat.element("key").value = "";
-    chat.element("settings-save").click();
-    await TestUtils.waitForCondition(() => chat.element("settings").hidden);
+    chat
+      .element("model")
+      .dispatchEvent(new win.Event("change", { bubbles: true }));
+    await TestUtils.waitForCondition(
+      () => NativeChatStore.getSettings().model === "local-vision-model"
+    );
     is(
       NativeChatStore.getSettings().model,
       "local-vision-model",
-      "Provider form saves from the redesigned settings view"
+      "Provider form saves automatically on change"
     );
+    await chat.toggleSettings();
     is(
       chat.element("model-label").textContent,
       "local-vision-model",
@@ -610,7 +620,7 @@ add_task(async function test_provider_settings_and_setup_error() {
     );
     ok(
       !chat.element("conversation").hidden,
-      "Saving returns to the conversation"
+      "Closing settings returns to the conversation"
     );
     await SpecialPowers.pushPrefEnv({
       set: [["browser.nativeChat.model", ""]],
@@ -632,5 +642,122 @@ add_task(async function test_provider_settings_and_setup_error() {
       "Screenshot action recovers after setup failure"
     );
     await SpecialPowers.popPrefEnv();
+  });
+});
+
+add_task(async function test_opencode_provider_settings() {
+  await withChatWindow({}, async (win, chat) => {
+    await chat.open();
+    await chat.toggleSettings();
+
+    chat.element("provider").value = "opencode";
+    chat
+      .element("provider")
+      .dispatchEvent(new win.Event("change", { bubbles: true }));
+    is(
+      chat.element("endpoint").value,
+      "http://127.0.0.1:4096",
+      "Selecting OpenCode populates default port 4096"
+    );
+    ok(!chat.element("model").required, "Model is optional for OpenCode");
+
+    chat.element("model").value = "";
+    chat
+      .element("model")
+      .dispatchEvent(new win.Event("change", { bubbles: true }));
+    await chat.toggleSettings();
+    is(
+      chat.element("model-label").getAttribute("data-l10n-id"),
+      "native-chat-server-default-model",
+      "Model label shows server default when model is empty"
+    );
+    ok(
+      chat.element("setup").hidden,
+      "Setup button is hidden when OpenCode is configured"
+    );
+
+    // Test OpenCode v2 pair link redemption
+    const { HttpServer } = ChromeUtils.importESModule(
+      "resource://testing-common/httpd.sys.mjs"
+    );
+    const server = new HttpServer();
+    server.registerPathHandler(
+      "/auth/connect/code-browser-test",
+      (request, response) => {
+        response.setStatusLine(request.httpVersion, 200, "OK");
+        response.setHeader("Content-Type", "application/json");
+        response.write(JSON.stringify({ token: "browser-paired-token" }));
+      }
+    );
+    server.start(-1);
+    try {
+      await chat.toggleSettings();
+      chat.element("provider").value = "opencode-v2";
+      chat
+        .element("provider")
+        .dispatchEvent(new win.Event("change", { bubbles: true }));
+      is(
+        chat.element("endpoint").value,
+        "http://127.0.0.1:49374",
+        "Selecting OpenCode v2 populates default port 49374"
+      );
+
+      server.registerPathHandler("/api/model", (request, response) => {
+        response.setStatusLine(request.httpVersion, 200, "OK");
+        response.setHeader("Content-Type", "application/json");
+        response.write(
+          JSON.stringify({
+            data: [
+              {
+                id: "test-model-1",
+                providerID: "opencode",
+                name: "Test Model 1",
+              },
+            ],
+          })
+        );
+      });
+
+      const pairUrl = `http://localhost:${server.identity.primaryPort}/auth/connect/code-browser-test`;
+      chat.element("endpoint").value = pairUrl;
+      chat
+        .element("endpoint")
+        .dispatchEvent(new win.Event("change", { bubbles: true }));
+
+      await TestUtils.waitForCondition(() =>
+        Array.from(chat.element("model").options).some(
+          opt => opt.value === "opencode/test-model-1"
+        )
+      );
+      ok(
+        true,
+        "Model dropdown populated with identified model from OpenCode v2 server"
+      );
+
+      chat.element("model").value = "opencode/test-model-1";
+      chat
+        .element("model")
+        .dispatchEvent(new win.Event("change", { bubbles: true }));
+      await chat.toggleSettings();
+      is(
+        NativeChatStore.getSettings().endpoint,
+        `http://localhost:${server.identity.primaryPort}`,
+        "Pair link base URL was saved"
+      );
+      is(
+        NativeChatStore.getSettings().model,
+        "opencode/test-model-1",
+        "Identified model selected from dropdown was saved"
+      );
+      is(
+        await NativeChatStore.getKey(
+          `http://localhost:${server.identity.primaryPort}`
+        ),
+        "browser-paired-token",
+        "Redeemed pairing token was saved to password manager"
+      );
+    } finally {
+      await new Promise(resolve => server.stop(resolve));
+    }
   });
 });

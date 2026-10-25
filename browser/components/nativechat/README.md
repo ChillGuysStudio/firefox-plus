@@ -30,15 +30,20 @@ for chat. The button becomes fully visible on hover or keyboard focus.
 
 Open **Settings**, choose a provider, and enter the API base URL, model ID, and
 API key. Supported APIs are OpenAI, Google AI Studio, Vertex AI Express Mode,
-Anthropic, OpenRouter, Grok, and custom OpenAI-compatible servers. The model ID
-comes from your provider. A local compatible server may leave the key empty.
-Remote endpoints require HTTPS; HTTP is supported for loopback servers.
+Anthropic, OpenRouter, Grok, custom OpenAI-compatible servers, OpenCode (v1), and
+OpenCode v2. The model ID comes from your provider. For OpenCode and OpenCode v2,
+the model ID is optional and defaults to the server's configured default model.
+A local server or OpenCode may leave the key empty. Remote endpoints require HTTPS;
+HTTP is supported for loopback servers (`http://127.0.0.1:4096` for v1, `http://127.0.0.1:49374` for v2).
+For OpenCode v2, you can paste an `opencode pair` link directly into either the API base URL
+or password field; the browser will automatically redeem the code and store the server URL and token.
+Settings save automatically as you make changes.
 
 Press **Enter** to send and **Shift+Enter** for a new line. **Stop** cancels the
-current request. **New** or `/reset` clears the conversation and cancels any
-pending reply. Responses render as selectable plain text, including code and
-math notation. The clipboard disguise, DOM quiz autofill, arbitrary image attachments,
-OpenCode-specific protocols, and rich Markdown rendering are outside this port.
+current request. **New** or `/reset` clears the conversation, resets provider session state,
+and cancels any pending reply. Responses render as selectable plain text, including code and
+math notation. The clipboard disguise, DOM quiz autofill, and arbitrary file attachments
+are outside this port.
 
 Messages go directly to the configured provider only when sent. The browser
 includes a page screenshot only when you use the camera button or Alt+Q. API keys are stored

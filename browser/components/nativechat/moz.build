@@ -4,6 +4,7 @@
 
 MOZ_SRC_FILES += [
     "NativeChat.sys.mjs",
+    "NativeChatOpenCode.sys.mjs",
     "NativeChatProvider.sys.mjs",
     "NativeChatScreenshot.sys.mjs",
     "NativeChatStore.sys.mjs",
