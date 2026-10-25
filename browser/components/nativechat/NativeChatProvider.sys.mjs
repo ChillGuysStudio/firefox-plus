@@ -27,7 +27,7 @@ export function normalizeEndpoint(value) {
   return url.href.replace(/\/+$/, "");
 }
 
-export function buildRequest(settings, apiKey, messages) {
+export function buildRequest(settings, apiKey, messages, image = null) {
   const base = normalizeEndpoint(settings.endpoint);
   const model = settings.model.trim();
   if (!Object.hasOwn(PROVIDERS, settings.provider) || !model) {
@@ -37,30 +37,84 @@ export function buildRequest(settings, apiKey, messages) {
     throw new Error("native-chat-missing-key");
   }
   const headers = { "Content-Type": "application/json" };
+  const withImage = messages.map((message, index) => {
+    if (!image || index !== messages.length - 1) {
+      return message;
+    }
+    return {
+      ...message,
+      content: [
+        { type: "text", text: message.content },
+        {
+          type: "image_url",
+          image_url: { url: `data:${image.mimeType};base64,${image.base64}` },
+        },
+      ],
+    };
+  });
   let url = `${base}/chat/completions`;
-  let body = { model, messages, stream: false };
+  let body = { model, messages: withImage, stream: false };
   if (["gemini", "vertex"].includes(settings.provider)) {
     url = `${base}/models/${encodeURIComponent(model)}:generateContent`;
     headers["x-goog-api-key"] = apiKey;
     body = {
-      contents: messages.map(({ role, content }) => ({
+      contents: messages.map(({ role, content }, index) => ({
         role: role === "assistant" ? "model" : "user",
-        parts: [{ text: content }],
+        parts: [
+          { text: content },
+          ...(image && index === messages.length - 1
+            ? [
+                {
+                  inline_data: {
+                    mime_type: image.mimeType,
+                    data: image.base64,
+                  },
+                },
+              ]
+            : []),
+        ],
       })),
     };
   } else if (settings.provider === "anthropic") {
     url = `${base}/messages`;
     headers["x-api-key"] = apiKey;
     headers["anthropic-version"] = "2023-06-01";
-    body = { model, messages, max_tokens: 8192 };
+    body = {
+      model,
+      messages: messages.map((message, index) =>
+        image && index === messages.length - 1
+          ? {
+              ...message,
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: image.mimeType,
+                    data: image.base64,
+                  },
+                },
+                { type: "text", text: message.content },
+              ],
+            }
+          : message
+      ),
+      max_tokens: 8192,
+    };
   } else if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
   }
   return { url, headers, body };
 }
 
-export async function requestReply(settings, apiKey, messages, signal) {
-  const request = buildRequest(settings, apiKey, messages);
+export async function requestReply(
+  settings,
+  apiKey,
+  messages,
+  signal,
+  image = null
+) {
+  const request = buildRequest(settings, apiKey, messages, image);
   const response = await fetch(request.url, {
     method: "POST",
     headers: request.headers,

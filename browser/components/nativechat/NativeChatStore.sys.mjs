@@ -17,10 +17,36 @@ const LoginInfo = Components.Constructor(
 );
 export const HISTORY_TOPIC = "firefox-plus-native-chat-history-changed";
 export const MAX_MESSAGES = 100;
+export const DEFAULT_APPEARANCE = { chatOpacity: 95, buttonOpacity: 60 };
+export const APPEARANCE_PREF = PREF;
 let historyFile;
 let historyReady;
 
 export const NativeChatStore = {
+  getAppearance() {
+    return Object.fromEntries(
+      Object.entries(DEFAULT_APPEARANCE).map(([name, value]) => [
+        name,
+        Math.min(
+          100,
+          Math.max(5, Services.prefs.getIntPref(`${PREF}${name}`, value))
+        ),
+      ])
+    );
+  },
+
+  saveAppearance(appearance) {
+    for (const name of Object.keys(DEFAULT_APPEARANCE)) {
+      const value = appearance[name];
+      if (Number.isFinite(value)) {
+        Services.prefs.setIntPref(
+          `${PREF}${name}`,
+          Math.min(100, Math.max(5, Math.round(value)))
+        );
+      }
+    }
+  },
+
   getSettings() {
     const provider = Services.prefs.getStringPref(`${PREF}provider`, "openai");
     return {

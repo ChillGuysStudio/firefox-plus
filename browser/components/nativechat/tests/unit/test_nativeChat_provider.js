@@ -145,6 +145,48 @@ add_task(async function test_network_responses_and_errors() {
   );
 });
 
+add_task(function test_screenshot_payloads() {
+  const image = { mimeType: "image/png", base64: "c2NyZWVuc2hvdA==" };
+  const original = JSON.stringify(messages);
+  for (const provider of Object.keys(PROVIDERS)) {
+    const request = buildRequest(
+      { provider, endpoint: PROVIDERS[provider], model: "vision-test" },
+      "secret",
+      messages,
+      image
+    );
+    if (["gemini", "vertex"].includes(provider)) {
+      const contents = request.body.contents;
+      Assert.deepEqual(contents.at(-1).parts[1], {
+        inline_data: { mime_type: "image/png", data: image.base64 },
+      });
+      Assert.equal(
+        contents[0].parts.length,
+        1,
+        "Only the newest message receives the screenshot"
+      );
+    } else if (provider === "anthropic") {
+      const content = request.body.messages.at(-1).content;
+      Assert.deepEqual(content[0], {
+        type: "image",
+        source: { type: "base64", media_type: "image/png", data: image.base64 },
+      });
+      Assert.equal(content[1].text, "Hi");
+    } else {
+      Assert.deepEqual(request.body.messages.at(-1).content[1], {
+        type: "image_url",
+        image_url: { url: `data:image/png;base64,${image.base64}` },
+      });
+      Assert.equal(request.body.messages[0].content, "Hello");
+    }
+  }
+  Assert.equal(
+    JSON.stringify(messages),
+    original,
+    "Building a vision request never mutates saved history"
+  );
+});
+
 const { NetUtil } = ChromeUtils.importESModule(
   "resource://gre/modules/NetUtil.sys.mjs"
 );

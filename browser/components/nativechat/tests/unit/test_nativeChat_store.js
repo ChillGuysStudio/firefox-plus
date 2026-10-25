@@ -67,3 +67,31 @@ add_task(function test_invalid_saved_position() {
   Assert.deepEqual(NativeChatStore.getPosition(), { x: 0.25, y: 0.5 });
   Services.prefs.deleteBranch("browser.nativeChat.");
 });
+
+add_task(function test_appearance_defaults_and_persistence() {
+  Assert.deepEqual(NativeChatStore.getAppearance(), {
+    chatOpacity: 95,
+    buttonOpacity: 60,
+  });
+  NativeChatStore.saveAppearance({ chatOpacity: 25, buttonOpacity: 10 });
+  Assert.deepEqual(NativeChatStore.getAppearance(), {
+    chatOpacity: 25,
+    buttonOpacity: 10,
+  });
+  Assert.equal(Services.prefs.getIntPref("browser.nativeChat.chatOpacity"), 25);
+  Assert.equal(
+    Services.prefs.getIntPref("browser.nativeChat.buttonOpacity"),
+    10
+  );
+  NativeChatStore.saveAppearance({ chatOpacity: 500, buttonOpacity: -50 });
+  Assert.deepEqual(NativeChatStore.getAppearance(), {
+    chatOpacity: 100,
+    buttonOpacity: 5,
+  });
+  NativeChatStore.saveAppearance({ chatOpacity: NaN, buttonOpacity: Infinity });
+  Assert.deepEqual(NativeChatStore.getAppearance(), {
+    chatOpacity: 100,
+    buttonOpacity: 5,
+  });
+  Services.prefs.deleteBranch("browser.nativeChat.");
+});

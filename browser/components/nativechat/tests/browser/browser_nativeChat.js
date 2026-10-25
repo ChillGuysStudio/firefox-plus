@@ -50,6 +50,12 @@ add_setup(async function setup() {
     }
     window.gNativeChat.close();
   });
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["browser.nativeChat.chatOpacity", 95],
+      ["browser.nativeChat.buttonOpacity", 60],
+    ],
+  });
 });
 
 add_task(async function test_restricted_pages_and_reserved_shortcuts() {
@@ -363,5 +369,268 @@ add_task(async function test_dom_fullscreen() {
       await SimpleTest.promiseFocus(browser);
       await DOMFullscreenTestUtils.changeFullscreen(browser, false);
     }
+  });
+});
+
+add_task(async function test_opacity_and_position_recovery() {
+  await withChatWindow({}, async (win, chat) => {
+    await chat.open();
+    await chat.toggleSettings();
+    ok(chat.element("conversation").hidden, "Settings gets a separate view");
+    chat.element("chat-opacity").value = "30";
+    chat
+      .element("chat-opacity")
+      .dispatchEvent(new win.Event("input", { bubbles: true }));
+    chat.element("button-opacity").value = "5";
+    chat
+      .element("button-opacity")
+      .dispatchEvent(new win.Event("input", { bubbles: true }));
+    is(
+      win.getComputedStyle(chat.element("panel")).opacity,
+      "0.3",
+      "Chat opacity previews immediately"
+    );
+    is(
+      chat.element("button-opacity-value").textContent,
+      "5%",
+      "Button opacity control reports its own value"
+    );
+    await withChatWindow({}, async (otherWindow, otherChat) => {
+      Assert.deepEqual(
+        otherChat.appearance,
+        { chatOpacity: 30, buttonOpacity: 5 },
+        "Opacity settings persist in new windows"
+      );
+    });
+    chat.position = { x: 0, y: 0 };
+    EventUtils.synthesizeKey("R", { shiftKey: true }, win);
+    is(chat.position.x, 0, "Typing without Alt does not reset the launcher");
+    chat.toggleHidden();
+    await SimpleTest.promiseFocus(win);
+    EventUtils.synthesizeKey("R", { altKey: true, shiftKey: true }, win);
+    await TestUtils.waitForCondition(() => !chat.isHidden);
+    Assert.deepEqual(
+      chat.position,
+      { x: 1, y: 1 },
+      "Recovery shortcut restores the default position"
+    );
+    is(
+      chat.appearance.buttonOpacity,
+      60,
+      "Recovery makes a nearly invisible button visible"
+    );
+    ok(
+      chat.element("overlay").matches(":popover-open"),
+      "Recovery restores a hidden overlay"
+    );
+    Assert.deepEqual(
+      NativeChatStore.getPosition(),
+      { x: 1, y: 1 },
+      "Recovered position persists"
+    );
+    await chat.open();
+    chat.position = { x: 0.2, y: 0.3 };
+    chat.element("reset-position").click();
+    await TestUtils.waitForCondition(() => chat.position.x === 1);
+    is(chat.position.y, 1, "Settings provides the same recovery action");
+  });
+  NativeChatStore.saveAppearance({ chatOpacity: 95, buttonOpacity: 60 });
+});
+
+add_task(
+  async function test_native_screenshot_and_answer_in_restricted_popup() {
+    const { HttpServer } = ChromeUtils.importESModule(
+      "resource://testing-common/httpd.sys.mjs"
+    );
+    const server = new HttpServer();
+    const received = [];
+    server.registerPathHandler("/v1/chat/completions", (request, response) => {
+      const { NetUtil } = ChromeUtils.importESModule(
+        "resource://gre/modules/NetUtil.sys.mjs"
+      );
+      received.push(
+        JSON.parse(
+          NetUtil.readInputStreamToString(
+            request.bodyInputStream,
+            request.bodyInputStream.available()
+          )
+        )
+      );
+      response.setHeader("Content-Type", "application/json");
+      response.write(
+        JSON.stringify({ choices: [{ message: { content: "4" } }] })
+      );
+    });
+    server.start(-1);
+    try {
+      await NativeChatStore.saveSettings(
+        {
+          provider: "custom",
+          endpoint: `http://localhost:${server.identity.primaryPort}/v1`,
+          model: "vision-test",
+        },
+        ""
+      );
+      await withChatWindow(
+        { all: false, features: "toolbar=no" },
+        async (win, chat) => {
+          const browser = win.gBrowser.selectedBrowser;
+          browser.browsingContext.allowJavascript = false;
+          await BrowserTestUtils.loadURIString({
+            browser,
+            uriString: RESTRICTED_URL,
+          });
+          await SpecialPowers.spawn(browser, [], () => {
+            content.document.documentElement.style.backgroundColor =
+              "rgb(0, 170, 68)";
+            content.document.body.style.margin = "0";
+            content.document.body.style.height = "3000px";
+            content.document.body.style.background =
+              "linear-gradient(rgb(170, 0, 0) 0 1000px, rgb(0, 170, 68) 1000px)";
+            content.document.body.textContent = "What is 2 + 2?";
+            content.scrollTo(0, 1200);
+            content.addEventListener(
+              "keydown",
+              event => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+              },
+              true
+            );
+          });
+          await chat.open();
+          chat.clear();
+          chat.element("input").value = "Keep this draft";
+          EventUtils.synthesizeMouseAtCenter(
+            chat.element("screenshot"),
+            {},
+            win
+          );
+          await TestUtils.waitForCondition(
+            () => received.length === 1 && !chat.abortController
+          );
+          is(
+            chat.messages.at(-1).content,
+            "4",
+            "Screenshot button returns the answer in a toolbarless popup"
+          );
+          is(
+            chat.element("input").value,
+            "Keep this draft",
+            "Screenshot requests preserve the typed draft"
+          );
+          const parts = received[0].messages.at(-1).content;
+          is(
+            parts[1].type,
+            "image_url",
+            "The provider receives an image request"
+          );
+          ok(
+            parts[0].text.includes("Answer the question visible"),
+            "The screenshot uses the short-answer prompt"
+          );
+          const imageURL = parts[1].image_url.url;
+          ok(
+            imageURL.startsWith("data:image/png;base64,iVBOR"),
+            "The native renderer returns a real PNG"
+          );
+          const image = new win.Image();
+          image.src = imageURL;
+          await image.decode();
+          const canvas = win.document.createElementNS(
+            "http://www.w3.org/1999/xhtml",
+            "canvas"
+          );
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const context = canvas.getContext("2d");
+          context.drawImage(image, 0, 0);
+          const pixel = Array.from(
+            context.getImageData(image.width - 24, image.height - 24, 1, 1).data
+          );
+          Assert.deepEqual(
+            pixel,
+            [0, 170, 68, 255],
+            "The screenshot contains page pixels, without the native launcher or chat"
+          );
+          ok(
+            !JSON.stringify(await NativeChatStore.loadHistory()).includes(
+              imageURL.split(",")[1]
+            ),
+            "Screenshot pixels are never saved in chat history"
+          );
+          chat.close();
+          await SimpleTest.promiseFocus(browser);
+          EventUtils.synthesizeKey("q", { altKey: true }, win);
+          await TestUtils.waitForCondition(
+            () => received.length === 2 && !chat.abortController
+          );
+          is(
+            chat.messages.at(-1).content,
+            "4",
+            "Reserved Alt+Q works with page scripts disabled and a hostile keyboard listener"
+          );
+          chat.position = { x: 0, y: 0 };
+          chat.toggleHidden();
+          await SimpleTest.promiseFocus(browser);
+          EventUtils.synthesizeKey("R", { altKey: true, shiftKey: true }, win);
+          await TestUtils.waitForCondition(() => !chat.isHidden);
+          Assert.deepEqual(
+            chat.position,
+            { x: 1, y: 1 },
+            "Position recovery also works in a restricted popup"
+          );
+        }
+      );
+    } finally {
+      await new Promise(resolve => server.stop(resolve));
+    }
+  }
+);
+
+add_task(async function test_provider_settings_and_setup_error() {
+  await withChatWindow({}, async (win, chat) => {
+    await chat.open();
+    await chat.toggleSettings();
+    chat.element("provider").value = "custom";
+    chat.element("endpoint").value = "http://localhost:1234/v1";
+    chat.element("model").value = "local-vision-model";
+    chat.element("key").value = "";
+    chat.element("settings-save").click();
+    await TestUtils.waitForCondition(() => chat.element("settings").hidden);
+    is(
+      NativeChatStore.getSettings().model,
+      "local-vision-model",
+      "Provider form saves from the redesigned settings view"
+    );
+    is(
+      chat.element("model-label").textContent,
+      "local-vision-model",
+      "Header shows the selected model"
+    );
+    ok(
+      !chat.element("conversation").hidden,
+      "Saving returns to the conversation"
+    );
+    await SpecialPowers.pushPrefEnv({
+      set: [["browser.nativeChat.model", ""]],
+    });
+    chat.element("input").value = "Preserve this draft";
+    await chat.send({ screenshot: true });
+    is(
+      chat.element("status").getAttribute("data-l10n-id"),
+      "native-chat-missing-model",
+      "Screenshot setup failures explain how to recover"
+    );
+    is(
+      chat.element("input").value,
+      "Preserve this draft",
+      "Setup failures preserve the draft"
+    );
+    ok(
+      !chat.element("screenshot").disabled,
+      "Screenshot action recovers after setup failure"
+    );
+    await SpecialPowers.popPrefEnv();
   });
 });

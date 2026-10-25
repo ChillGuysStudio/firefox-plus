@@ -9,14 +9,37 @@
   </html:button>
   <html:section id="native-chat-panel" hidden="hidden" aria-labelledby="native-chat-title">
     <html:header id="native-chat-header">
-      <html:strong id="native-chat-title" data-l10n-id="native-chat-title"/>
-      <html:button id="native-chat-new" data-l10n-id="native-chat-new"/>
-      <html:button id="native-chat-settings-toggle" data-l10n-id="native-chat-settings-toggle"
-                   aria-expanded="false" aria-controls="native-chat-settings"/>
-      <html:button id="native-chat-close" data-l10n-id="native-chat-close"/>
+      <html:div id="native-chat-heading">
+        <html:strong id="native-chat-title" data-l10n-id="native-chat-title"/>
+        <html:span id="native-chat-model-label"/>
+      </html:div>
+      <html:button id="native-chat-new" class="native-chat-icon-button" data-l10n-id="native-chat-new">
+        <html:img src="chrome://browser/content/native-chat-new.svg" alt=""/>
+      </html:button>
+      <html:button id="native-chat-settings-toggle" class="native-chat-icon-button" data-l10n-id="native-chat-settings-toggle"
+                   aria-expanded="false" aria-controls="native-chat-settings">
+        <html:img src="chrome://browser/content/native-chat-settings.svg" alt=""/>
+      </html:button>
+      <html:button id="native-chat-close" class="native-chat-icon-button" data-l10n-id="native-chat-close">
+        <html:img src="chrome://browser/content/native-chat-close.svg" alt=""/>
+      </html:button>
     </html:header>
     <html:p id="native-chat-private" hidden="hidden" data-l10n-id="native-chat-private"/>
     <html:form id="native-chat-settings" hidden="hidden">
+      <html:h2 data-l10n-id="native-chat-appearance"/>
+      <html:div class="native-chat-slider-label">
+        <html:label for="native-chat-chat-opacity" data-l10n-id="native-chat-chat-opacity"/>
+        <html:output id="native-chat-chat-opacity-value" for="native-chat-chat-opacity"/>
+      </html:div>
+      <html:input id="native-chat-chat-opacity" type="range" min="5" max="100" step="5"/>
+      <html:div class="native-chat-slider-label">
+        <html:label for="native-chat-button-opacity" data-l10n-id="native-chat-button-opacity"/>
+        <html:output id="native-chat-button-opacity-value" for="native-chat-button-opacity"/>
+      </html:div>
+      <html:input id="native-chat-button-opacity" type="range" min="5" max="100" step="5"/>
+      <html:button id="native-chat-reset-position" type="button" data-l10n-id="native-chat-reset-position"/>
+      <html:p data-l10n-id="native-chat-reset-hint"/>
+      <html:h2 data-l10n-id="native-chat-connection"/>
       <html:label for="native-chat-provider" data-l10n-id="native-chat-provider"/>
       <html:select id="native-chat-provider">
         <html:option value="openai">OpenAI</html:option>
@@ -28,22 +51,39 @@
         <html:option value="custom" data-l10n-id="native-chat-custom"/>
       </html:select>
       <html:label for="native-chat-endpoint" data-l10n-id="native-chat-endpoint"/>
-      <html:input id="native-chat-endpoint" type="url" required="required"/>
+      <html:input id="native-chat-endpoint" type="url" required="required" spellcheck="false"/>
       <html:label for="native-chat-model" data-l10n-id="native-chat-model"/>
-      <html:input id="native-chat-model" type="text" required="required"/>
+      <html:input id="native-chat-model" type="text" required="required" spellcheck="false"/>
       <html:label for="native-chat-key" data-l10n-id="native-chat-key"/>
       <html:input id="native-chat-key" type="password" autocomplete="off"/>
       <html:p data-l10n-id="native-chat-settings-info"/>
       <html:button id="native-chat-settings-save" type="submit" data-l10n-id="native-chat-settings-save"/>
     </html:form>
-    <html:div id="native-chat-messages" role="log" aria-live="polite"
-              aria-relevant="additions text" data-l10n-id="native-chat-messages"/>
-    <html:p id="native-chat-empty" data-l10n-id="native-chat-empty"/>
+    <html:div id="native-chat-conversation">
+      <html:div id="native-chat-messages" role="log" aria-live="polite"
+                aria-relevant="additions text" data-l10n-id="native-chat-messages"/>
+      <html:div id="native-chat-empty">
+        <html:img src="chrome://browser/content/native-chat.svg" alt=""/>
+        <html:h2 data-l10n-id="native-chat-empty-title"/>
+        <html:p data-l10n-id="native-chat-empty"/>
+        <html:button id="native-chat-setup" type="button" data-l10n-id="native-chat-setup"/>
+      </html:div>
+      <html:form id="native-chat-composer">
+        <html:textarea id="native-chat-input" rows="2" data-l10n-id="native-chat-input"/>
+        <html:div id="native-chat-composer-actions">
+          <html:button id="native-chat-screenshot" class="native-chat-icon-button" type="button" data-l10n-id="native-chat-screenshot">
+            <html:img src="chrome://browser/content/native-chat-camera.svg" alt=""/>
+          </html:button>
+          <html:span data-l10n-id="native-chat-composer-hint"/>
+          <html:button id="native-chat-send" class="native-chat-icon-button" type="submit" data-l10n-id="native-chat-send">
+            <html:img src="chrome://browser/content/native-chat-send.svg" alt=""/>
+          </html:button>
+          <html:button id="native-chat-stop" class="native-chat-icon-button" type="button" hidden="hidden" data-l10n-id="native-chat-stop">
+            <html:img src="chrome://browser/content/native-chat-stop.svg" alt=""/>
+          </html:button>
+        </html:div>
+      </html:form>
+    </html:div>
     <html:p id="native-chat-status" role="status" hidden="hidden"/>
-    <html:form id="native-chat-composer">
-      <html:textarea id="native-chat-input" rows="2" data-l10n-id="native-chat-input"/>
-      <html:button id="native-chat-send" type="submit" data-l10n-id="native-chat-send"/>
-      <html:button id="native-chat-stop" type="button" hidden="hidden" data-l10n-id="native-chat-stop"/>
-    </html:form>
   </html:section>
 </html:div>
